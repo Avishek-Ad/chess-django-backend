@@ -35,8 +35,8 @@ if ENVIRONMENT == 'development':
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', "chess-django-backend-production.up.railway.app"]
+CSRF_TRUSTED_ORIGINS = ["https://chess-django-backend-production.up.railway.app/"]
 
 # Application definition
 
