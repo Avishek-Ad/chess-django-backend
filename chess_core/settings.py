@@ -35,8 +35,34 @@ if ENVIRONMENT == 'development':
 else:
     DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', "chess-django-backend-production.up.railway.app"]
-CSRF_TRUSTED_ORIGINS = ["https://chess-django-backend-production.up.railway.app"]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', "chess-django-backend-production.up.railway.app", "chess-next-frontend-production.up.railway.app"]
+CORS_ALLOWED_ORIGINS = [
+    "https://chess-next-frontend-production.up.railway.app"
+]
+CSRF_TRUSTED_ORIGINS = ["https://chess-django-backend-production.up.railway.app", "https://chess-next-frontend-production.up.railway.app"]
+
+CHANNELS_WS_ALLOWED_ORIGINS = [
+    "https://chess-next-frontend-production.up.railway.app"
+]
+
+# Channels-specific
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "sec-websocket-protocol",
+    "sec-websocket-extensions",
+]
+
+ALLOWED_HOSTS = [
+    ".railway.app",
+    "127.0.0.1",
+    "localhost",
+]
+
+CHANNELS_ALLOWED_ORIGINS = [
+    "https://chess-next-frontend-production.up.railway.app"
+]
+
 
 # Application definition
 
