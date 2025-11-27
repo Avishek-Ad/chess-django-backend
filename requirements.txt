@@ -15,6 +15,7 @@ daphne==4.2.1
 dj-database-url==3.0.1
 Django==5.2.8
 django-cors-headers==4.9.0
+django-environ==0.12.0
 django-ninja==1.5.0
 django-ninja-extra==0.30.6
 django-ninja-jwt==5.4.2
@@ -46,4 +47,5 @@ txaio==25.9.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 ujson==5.11.0
+whitenoise==6.11.0
 zope.interface==8.1.1
