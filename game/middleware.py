@@ -1,0 +1,51 @@
+# Conceptual TokenAuthMiddleware (often from a library or custom-written)
+import jwt
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
+from channels.auth import AuthMiddlewareStack
+from channels.db import database_sync_to_async
+from urllib.parse import parse_qs
+from django.conf import settings
+
+# Helper to fetch a Django User from the JWT payload using sync DB access wrapped for async.
+@database_sync_to_async
+def get_user_from_payload(payload):
+    User = get_user_model()
+    # Common claim names: 'user_id', 'id', or 'sub' depending on your token issuer
+    user_id = payload.get('user_id') or payload.get('id') or payload.get('sub')
+    if not user_id:
+        return AnonymousUser()
+    try:
+        return User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return AnonymousUser()
+
+# (This is conceptual, replace with your actual JWT validation logic)
+class TokenAuthMiddleware:
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        query_string = parse_qs(scope['query_string'].decode())
+        token = query_string.get('token', [None])[0]
+
+        if token:
+            try:
+                # 1. Validate the JWT token
+                # This must correctly decode and validate your token
+                payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"]) 
+                user = await get_user_from_payload(payload) # 2. Fetch the User object
+                scope['user'] = user
+            except Exception as e:
+                # Token is invalid or expired
+                print(f"JWT Authentication Failed: {e}")
+                scope['user'] = AnonymousUser()
+        else:
+            scope['user'] = AnonymousUser()
+
+        return await self.inner(scope, receive, send)
+
+# 3. Create the Channel Layer Stack
+def TokenAuthMiddlewareStack(inner):
+    return TokenAuthMiddleware(AuthMiddlewareStack(inner))
+

@@ -1,6 +1,5 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .models import ChessGame
-from useraccount.models import User
 from channels.db import database_sync_to_async
 import json
 import chess
@@ -12,78 +11,102 @@ CONNECTED_USERS = {}
 
 class ChessConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        #### checking if user is connected or reconnected ####
-        user_id = self.scope["user"].id
-        # signal reconnection
-        if user_id in CONNECTED_USERS:
-            CONNECTED_USERS[user_id].set()  # old consumer knows user reconnected
-        else:
-            CONNECTED_USERS[user_id] = asyncio.Event()
-        self.reconnect_event = CONNECTED_USERS[user_id]
-        #### ####
+        try:
+            self.user = self.scope["user"]
+            self.game_id = self.scope["url_route"]["kwargs"]['game_id']
+            self.game_room_name = f"game_{self.game_id}"
+            
+            ##### reconnection logic
+            # Handle Reconnection
+            if self.user.id in CONNECTED_USERS:
+                old_event = CONNECTED_USERS[self.user.id]
+                old_event.set()
 
-        self.game_id = self.scope["url_route"]["kwargs"]['game_id']
-        self.game_room_name = f"game_{self.game_id}"
+            self.disconnect_event = asyncio.Event()
+            CONNECTED_USERS[self.user.id] = self.disconnect_event
+            #####
 
-        # join game room
-        await self.channel_layer.group_add(
-            self.game_room_name, self.channel_name
-        )
-        await self.accept()
+            await self.channel_layer.group_add(
+                self.game_room_name, self.channel_name
+            )
+            await self.accept()
+            
+        except Exception as e:
+            await self.close()
 
     async def disconnect(self, close_code):
+        ##### reconnection logic
+        if not hasattr(self, 'game_room_name'):
+            return
+        #####
+
+        # Leaving group immediately
         await self.channel_layer.group_discard(
             self.game_room_name, self.channel_name
         )
 
-        # lets give the user 2 second to reconnect
-        await asyncio.sleep(2)
-        if self.reconnect_event.is_set():
-            return
-        
-        # Load game safely
-        game = await database_sync_to_async(ChessGame.objects.get)(id=self.game_id)
+        ##### reconnection logic
+        # Waiting for reconnection (The Grace Period) or the chance
+        try:
+            # print("DEBUG: Waiting 2 seconds for reconnection...")
+            await asyncio.wait_for(self.disconnect_event.wait(), timeout=2.0)
+            # print("DEBUG: User reconnected! Aborting forfeit.")
+            return 
+        except asyncio.TimeoutError:
+            pass
+            # print("DEBUG: Timeout reached. User did not reconnect.")
+        except asyncio.CancelledError:
+            # print("CRITICAL: Disconnect task was cancelled by the server!")
+            pass
 
-        winner = None  # IMPORTANT
+        # Cleaning up Dictionary
+        if hasattr(self, 'user') and self.user.id in CONNECTED_USERS:
+            if CONNECTED_USERS[self.user.id] == self.disconnect_event:
+                del CONNECTED_USERS[self.user.id]
+        #####
 
-        if game.status == "active":
+        try:            
+            # Fetching game
+            game = await database_sync_to_async(ChessGame.objects.get)(id=self.game_id)
+            
+            winner_id = None
+            
+            if game.status == "active":
+                player_white, player_black = await database_sync_to_async(
+                    lambda: (game.player_white, game.player_black)
+                )()
+                
+                if self.user.id == player_white.id:
+                    winner = player_black
+                else:
+                    winner = player_white
+                
+                # Updateing DB
+                def update_game():
+                    game.status = "finished"
+                    game.winner = winner
+                    game.save()
+                await database_sync_to_async(update_game)()
+                
+                winner_id = str(winner.id)
 
-            # Load players safely
-            player_white, player_black = await database_sync_to_async(
-                lambda: (game.player_white, game.player_black)
-            )()
-            disconnected_user = self.scope["user"]
+            elif game.status == "finished":
+                winner = await database_sync_to_async(lambda: game.winner)()
+                winner_id = str(winner.id) if winner else None
 
-            # Determine winner WITHOUT hitting DB inside async
-            if disconnected_user.id == player_white.id:
-                winner = player_black
-            else:
-                winner = player_white
+            # Broadcasting "Game Over"
+            event = {
+                'type': 'chess_move_handler',
+                'move': None, 
+                'status': "finished",
+                'winner': winner_id
+            }
+            
+            await self.channel_layer.group_send(self.game_room_name, event)
 
-            # Save changes safely
-            def update_game():
-                game.status = "finished"
-                game.winner = winner
-                game.save()
-
-            await database_sync_to_async(update_game)()
-
-        # Prepare event payload
-        event = {
-            'type': 'chess_move_handler',
-            'move': None,
-            'status': game.status,  # OK, primitive field
-            'winner': str(winner.id) if winner else None
-        }
-
-        # Notify the opponent
-        await self.channel_layer.group_send(self.game_room_name, event)
-
-        # cleanup
-        user_id = self.scope["user"].id
-        if user_id in CONNECTED_USERS:
-            del CONNECTED_USERS[user_id]
-
+        except BaseException as e:
+            # print(f"critical ERROR in disconnect logic: {e}")
+            pass
     
     async def receive(self, text_data):
         data = json.loads(text_data)
