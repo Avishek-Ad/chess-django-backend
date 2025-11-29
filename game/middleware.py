@@ -1,4 +1,3 @@
-# Conceptual TokenAuthMiddleware (often from a library or custom-written)
 import jwt
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
@@ -11,7 +10,6 @@ from django.conf import settings
 @database_sync_to_async
 def get_user_from_payload(payload):
     User = get_user_model()
-    # Common claim names: 'user_id', 'id', or 'sub' depending on your token issuer
     user_id = payload.get('user_id') or payload.get('id') or payload.get('sub')
     if not user_id:
         return AnonymousUser()
@@ -20,7 +18,6 @@ def get_user_from_payload(payload):
     except User.DoesNotExist:
         return AnonymousUser()
 
-# (This is conceptual, replace with your actual JWT validation logic)
 class TokenAuthMiddleware:
     def __init__(self, inner):
         self.inner = inner
@@ -31,10 +28,10 @@ class TokenAuthMiddleware:
 
         if token:
             try:
-                # 1. Validate the JWT token
-                # This must correctly decode and validate your token
+                # Validateing the JWT token
+                # This must correctly decode and validate the token
                 payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"]) 
-                user = await get_user_from_payload(payload) # 2. Fetch the User object
+                user = await get_user_from_payload(payload) # Fetching the User object
                 scope['user'] = user
             except Exception as e:
                 # Token is invalid or expired
@@ -45,7 +42,7 @@ class TokenAuthMiddleware:
 
         return await self.inner(scope, receive, send)
 
-# 3. Create the Channel Layer Stack
+# Creating the Channel Layer Stack
 def TokenAuthMiddlewareStack(inner):
     return TokenAuthMiddleware(AuthMiddlewareStack(inner))
 

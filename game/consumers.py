@@ -34,6 +34,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             await self.close()
 
+
     async def disconnect(self, close_code):
         ##### reconnection logic
         if not hasattr(self, 'game_room_name'):
@@ -48,15 +49,11 @@ class ChessConsumer(AsyncWebsocketConsumer):
         ##### reconnection logic
         # Waiting for reconnection (The Grace Period) or the chance
         try:
-            # print("DEBUG: Waiting 2 seconds for reconnection...")
             await asyncio.wait_for(self.disconnect_event.wait(), timeout=2.0)
-            # print("DEBUG: User reconnected! Aborting forfeit.")
             return 
         except asyncio.TimeoutError:
             pass
-            # print("DEBUG: Timeout reached. User did not reconnect.")
         except asyncio.CancelledError:
-            # print("CRITICAL: Disconnect task was cancelled by the server!")
             pass
 
         # Cleaning up Dictionary
