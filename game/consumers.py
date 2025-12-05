@@ -8,6 +8,8 @@ import asyncio
 # key: user_id, value: asyncio.Event to signal reconnection
 CONNECTED_USERS = {}
 
+# only using user.id in the CONNECTED_USER the disconnect of chessConsumer is cancelled by
+# the connection in the matchmaking so to make it robust using both game_id and user.id
 
 class ChessConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -17,13 +19,14 @@ class ChessConsumer(AsyncWebsocketConsumer):
             self.game_room_name = f"game_{self.game_id}"
             
             ##### reconnection logic
+            key = (self.game_id, self.user.id)
             # Handle Reconnection
-            if self.user.id in CONNECTED_USERS:
-                old_event = CONNECTED_USERS[self.user.id]
+            if key in CONNECTED_USERS:
+                old_event = CONNECTED_USERS[key]
                 old_event.set()
 
             self.disconnect_event = asyncio.Event()
-            CONNECTED_USERS[self.user.id] = self.disconnect_event
+            CONNECTED_USERS[key] = self.disconnect_event
             #####
 
             await self.channel_layer.group_add(
@@ -47,6 +50,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
         )
 
         ##### reconnection logic
+        key = (self.game_id, self.user.id)
         # Waiting for reconnection (The Grace Period) or the chance
         try:
             await asyncio.wait_for(self.disconnect_event.wait(), timeout=2.0)
@@ -57,9 +61,9 @@ class ChessConsumer(AsyncWebsocketConsumer):
             pass
 
         # Cleaning up Dictionary
-        if hasattr(self, 'user') and self.user.id in CONNECTED_USERS:
-            if CONNECTED_USERS[self.user.id] == self.disconnect_event:
-                del CONNECTED_USERS[self.user.id]
+        if hasattr(self, 'user') and key in CONNECTED_USERS:
+            if CONNECTED_USERS[key] == self.disconnect_event:
+                del CONNECTED_USERS[key]
         #####
 
         try:            
@@ -102,7 +106,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_send(self.game_room_name, event)
 
         except BaseException as e:
-            # print(f"critical ERROR in disconnect logic: {e}")
+            print(f"critical ERROR in disconnect logic: {e}")
             pass
     
     async def receive(self, text_data):
@@ -173,3 +177,29 @@ class ChessConsumer(AsyncWebsocketConsumer):
         winner = event['winner']
         # sending moves to websocket (browser)
         await self.send(text_data=json.dumps({"move":move_record, "status":status, "winner":winner}))
+
+
+class MatchMakingConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        lazy_user = self.scope["user"]
+        if lazy_user.is_anonymous:
+            return
+        
+        # has user or user is authorized
+        self.user = self.scope["user"]
+        self.room_name = f"user-{self.user.id}"
+        
+        await self.channel_layer.group_add(
+            self.room_name, self.channel_name
+        )
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.room_name, self.channel_name
+        )
+
+    async def match_found(self, event):
+        gameid = event['gameid']
+
+        await self.send(text_data=json.dumps({'gameid':gameid}))

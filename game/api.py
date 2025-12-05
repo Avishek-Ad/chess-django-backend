@@ -3,6 +3,7 @@ from ninja_jwt.authentication import JWTAuth
 from .schema import *
 from .models import ChessGame
 from uuid import UUID
+from .redis_utils import redis_client as r
 
 game_router = Router()
 
@@ -63,6 +64,26 @@ def player_side(request, gameid):
         return {"message":"invalid request"}
     except ChessGame.DoesNotExist:
         return 404, {"message":"Game Not Found"}
+    
+@game_router.post("join-a-random-game/", auth=JWTAuth())
+def join_a_random_game(request):
+    user = request.user
+    # check if user is already in the queue
+    print("Users Waiting", r.lrange("matchmaking_queue", 0, -1))
+    if str(user.id) in r.lrange("matchmaking_queue", 0, -1):
+        return {'message': "Already waiting for Match", 'success':True}
+    # now push the user to radis
+    r.lpush("matchmaking_queue", user.id)
+    print("user pushed to radis queue")
+    return {'message': "Waiting for Match", 'success':True}
+
+@game_router.post("quit-waiting-for-a-random-game/", auth=JWTAuth())
+def quit_waiting_for_random_match(request):
+    print("Quit waiting for a random game")
+    print(r.lrange("matchmaking_queue", 0, -1))
+    user = request.user
+    r.lrem("matchmaking_queue", 0, user.id)
+    return {"message":"Removed successfully"}
 
 # not used currently
 # list all my games

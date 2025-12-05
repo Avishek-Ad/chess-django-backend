@@ -124,37 +124,39 @@ ASGI_APPLICATION = 'chess_core.asgi.application'
 #     }
 # }
 
-# railway's radis for channel
+# railway's redis for channel
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env('RADIS_URL')],
+            "hosts": [env('REDIS_URL')],
         },
     },
 }
 
+CELERY_BROKER_URL = env('REDIS_URL')
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # postgress from docker container
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'postgres',              # The default DB name
-#         'USER': 'postgres',              # The default superuser name
-#         'PASSWORD': 'mysecretpassword',  # Your specified password
-#         'HOST': 'localhost',             # Connects to the host port
-#         'PORT': '5432',
-#     }
-# }
-
-# railway's postgress db
-import dj_database_url
-DATABASES = {
-    'default': dj_database_url.parse(env('DATABASE_URL'))
-}
+if ENVIRONMENT == 'development':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgres',              # The default DB name
+            'USER': 'postgres',              # The default superuser name
+            'PASSWORD': 'postgres',          # Your specified password
+            'HOST': 'localhost',             # Connects to the host port
+            'PORT': '5432',
+        }
+    }
+else:
+    # railway's postgress db
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.parse(env('DATABASE_URL'))
+    }
 
 
 # Password validation
@@ -209,3 +211,11 @@ NINJA_JWT = {
 }
 
 CORS_ALLOW_ALL_ORIGINS=True
+
+# this runs the matchmaking task every 300ms
+CELERY_BEAT_SCHEDULE = {
+    "matchmaking-every-300ms": {
+        "task": "game.task.matchmaking_task",
+        "schedule": 0.6,  # Run every 600 milliseconds
+    },
+}

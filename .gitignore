@@ -5,3 +5,5 @@ media/
 __pycache__/
 db.sqlite3
 .DS_Store
+start_all.sh
+celerybeat-schedule
