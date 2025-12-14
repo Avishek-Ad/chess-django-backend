@@ -33,6 +33,10 @@ class ChessConsumer(AsyncWebsocketConsumer):
                 self.game_room_name, self.channel_name
             )
             await self.accept()
+
+            # sending game's initial position game_fen to individual user who joins
+            game = await database_sync_to_async(ChessGame.objects.get)(pk=self.game_id)
+            await self.send(text_data=json.dumps({'fen': game.board_fen}))
             
         except Exception as e:
             await self.close()
@@ -178,6 +182,10 @@ class ChessConsumer(AsyncWebsocketConsumer):
         # sending moves to websocket (browser)
         await self.send(text_data=json.dumps({"move":move_record, "status":status, "winner":winner}))
 
+    async def send_game_position(self, event):
+        game = await database_sync_to_async(ChessGame.objects.get)(pk=self.game_id)
+        board_fen = game.board_fen
+        await self.send(text_data=json.dumps({'fen':board_fen}))
 
 class MatchMakingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
