@@ -110,7 +110,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_send(self.game_room_name, event)
 
         except BaseException as e:
-            print(f"critical ERROR in disconnect logic: {e}")
+            # print(f"critical ERROR in disconnect logic: {e}")
             pass
     
     async def receive(self, text_data):

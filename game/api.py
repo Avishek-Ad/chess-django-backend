@@ -25,7 +25,7 @@ def create_game(request, data:CreateGameRequestSchema):
     400: ErrorSchema
     }, auth=JWTAuth())
 def join_game(request, gameid:UUID):
-    print("inside join", gameid)
+    # print("inside join", gameid)
     try:
         game = ChessGame.objects.get(id=gameid, status='waiting')
         if game.player_black is not None and game.player_white is not None:
@@ -69,18 +69,18 @@ def player_side(request, gameid):
 def join_a_random_game(request):
     user = request.user
     # check if user is already in the queue
-    print("Users Waiting", r.lrange("matchmaking_queue", 0, -1))
+    # print("Users Waiting", r.lrange("matchmaking_queue", 0, -1))
     if str(user.id) in r.lrange("matchmaking_queue", 0, -1):
         return {'message': "Already waiting for Match", 'success':True}
     # now push the user to radis
     r.lpush("matchmaking_queue", user.id)
-    print("user pushed to radis queue")
+    # print("user pushed to radis queue")
     return {'message': "Waiting for Match", 'success':True}
 
 @game_router.post("quit-waiting-for-a-random-game/", auth=JWTAuth())
 def quit_waiting_for_random_match(request):
-    print("Quit waiting for a random game")
-    print(r.lrange("matchmaking_queue", 0, -1))
+    # print("Quit waiting for a random game")
+    # print(r.lrange("matchmaking_queue", 0, -1))
     user = request.user
     r.lrem("matchmaking_queue", 0, user.id)
     return {"message":"Removed successfully"}
