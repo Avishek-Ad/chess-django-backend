@@ -14,11 +14,10 @@ def matchmaking_task():
         user1 = r.rpop("matchmaking_queue") # they will be a string
         user2 = r.rpop("matchmaking_queue")
 
-        # remove int conversion if later i used uuid --------------Reminder (wasted 3 hrs because i didnot set the status to active)
         game = ChessGame.objects.create(player_white_id=str(user1), player_black_id=str(user2), status="active")
 
         # sending match found message (well its just an event and it will send the message)
-        print("USERS FOUND SENDING THE GAMEID")
+        # print("USERS FOUND SENDING THE GAMEID")
         async_to_sync(channel_layer.group_send)(
             f"user-{user1}",
             {

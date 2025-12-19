@@ -35,7 +35,7 @@ class TokenAuthMiddleware:
                 scope['user'] = user
             except Exception as e:
                 # Token is invalid or expired
-                print(f"JWT Authentication Failed: {e}")
+                # print(f"JWT Authentication Failed: {e}")
                 scope['user'] = AnonymousUser()
         else:
             scope['user'] = AnonymousUser()
