@@ -118,6 +118,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
         move_from = data.get('from')
         move_to = data.get('to')
         player = data.get('player') # black or white
+        promotion = data.get('promotion')
 
         game = await database_sync_to_async(ChessGame.objects.get)(id=self.game_id)
 
@@ -128,7 +129,10 @@ class ChessConsumer(AsyncWebsocketConsumer):
 
         # validating the moves
         board = chess.Board(game.board_fen)
-        uci_move = chess.Move.from_uci(f"{move_from}{move_to}")
+        if promotion:
+            uci_move = chess.Move.from_uci(f"{move_from}{move_to}{promotion}")
+        else:
+            uci_move = chess.Move.from_uci(f"{move_from}{move_to}")
 
         # turn 1->white and 0->black
         if (board.turn and player != "white") or (not board.turn and player != 'black'):
@@ -146,7 +150,8 @@ class ChessConsumer(AsyncWebsocketConsumer):
             "to":move_to,
             "player":player,
             "piece":board.piece_at(chess.parse_square(move_to)).symbol(),
-            "turn":len(game.move_history)+1
+            "turn":len(game.move_history)+1,
+            "promotion": promotion
         }
         game.move_history.append(move_record)
         game.board_fen = board.fen()
@@ -186,6 +191,8 @@ class ChessConsumer(AsyncWebsocketConsumer):
         game = await database_sync_to_async(ChessGame.objects.get)(pk=self.game_id)
         board_fen = game.board_fen
         await self.send(text_data=json.dumps({'fen':board_fen}))
+
+
 
 class MatchMakingConsumer(AsyncWebsocketConsumer):
     async def connect(self):
