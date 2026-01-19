@@ -18,13 +18,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 from .api import api
+from rest_framework_simplejwt.views import TokenRefreshView
+from useraccount.views import CustomTokenObtainPairView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', api.urls)
+    path('api/', api.urls),
+    # path('api/v2/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('api/v2/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # path('api/v2/user/', include('useraccount.urls'))
 ]
 
 if settings.DEBUG:
