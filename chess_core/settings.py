@@ -13,12 +13,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 import os
+from corsheaders.defaults import default_headers
+from environ import Env
+env = Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-from environ import Env
-env = Env()
 # Env.read_env()
 env.read_env(os.path.join(BASE_DIR, '.env'))
 ENVIRONMENT = env('ENVIRONMENT', default="production")
@@ -48,7 +49,6 @@ CHANNELS_WS_ALLOWED_ORIGINS = [
 ]
 
 # Channels-specific
-from corsheaders.defaults import default_headers
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "sec-websocket-protocol",
@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     "corsheaders",
     'ninja_extra',
     'ninja_jwt',
+    'rest_framework',
+    'rest_framework_simplejwt',
     # internal
     'useraccount',
     'game',
@@ -214,4 +216,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "game.task.matchmaking_task",
         "schedule": 0.6,  # Run every 600 milliseconds
     },
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
 }

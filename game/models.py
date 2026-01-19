@@ -4,6 +4,8 @@ from django.contrib.postgres.fields import JSONField
 import uuid
 from useraccount.models import User
 
+from .queryset import GameQuerySet
+
 
 class ChessGame(models.Model):
     STATUS_CHOICES = [
@@ -21,6 +23,8 @@ class ChessGame(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = GameQuerySet.as_manager()
 
     def __str__(self):
         return f"Game {self.id} ({self.status})"
