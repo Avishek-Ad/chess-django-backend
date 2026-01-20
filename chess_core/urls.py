@@ -29,7 +29,8 @@ urlpatterns = [
     path('api/', api.urls),
     # path('api/v2/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     # path('api/v2/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # path('api/v2/user/', include('useraccount.urls'))
+    # path('api/v2/user/', include('useraccount.urls')),
+    # path('api/v2/game/', include('game.urls'))
 ]
 
 if settings.DEBUG:

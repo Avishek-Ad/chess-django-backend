@@ -30,7 +30,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
     def validate(self, attrs):
-        if getattr(attrs, 'password') != getattr(attrs, 'confirm_password'):
+        if attrs['password'] != attrs['confirm_password']:
             raise serializers.ValidationError("Password and Confirm Password doesnot match.")
         return attrs
 
